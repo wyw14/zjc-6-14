@@ -30,6 +30,7 @@
     <div class="controls">
       <button id="restartBtn" class="btn btn-primary">🔄 重新开始</button>
       <button id="leaderboardBtn" class="btn btn-secondary">🏆 排行榜</button>
+      <button id="settingsBtn" class="btn btn-secondary">⚙️ 设置</button>
     </div>
 
     <div id="winModal" class="modal hidden">
@@ -51,6 +52,57 @@
         <h2>🏆 排行榜</h2>
         <ol id="leaderboardList" class="leaderboard-list"></ol>
         <button id="closeLeaderboardBtn" class="btn btn-secondary">关闭</button>
+      </div>
+    </div>
+
+    <div id="settingsModal" class="modal hidden">
+      <div class="modal-content">
+        <h2>⚙️ 游戏设置</h2>
+        
+        <div class="setting-group">
+          <div class="setting-label">
+            <span>🔊 音效</span>
+            <label class="switch">
+              <input type="checkbox" id="soundEnabled">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <div class="setting-label">
+            <span>🔈 音量</span>
+            <span id="volumeValue">70%</span>
+          </div>
+          <input type="range" id="soundVolume" min="0" max="100" value="70" class="range-slider">
+        </div>
+
+        <div class="setting-group">
+          <div class="setting-label">
+            <span>✨ 动画强度</span>
+          </div>
+          <div class="animation-buttons">
+            <button type="button" class="anim-btn" data-level="0">关闭</button>
+            <button type="button" class="anim-btn" data-level="1">弱</button>
+            <button type="button" class="anim-btn" data-level="2">中</button>
+            <button type="button" class="anim-btn" data-level="3">强</button>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <div class="setting-label">
+            <span>🌙 深色模式</span>
+            <label class="switch">
+              <input type="checkbox" id="darkMode">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-actions">
+          <button id="saveSettingsBtn" class="btn btn-primary">保存设置</button>
+          <button id="closeSettingsBtn" class="btn btn-secondary">关闭</button>
+        </div>
       </div>
     </div>
   </div>

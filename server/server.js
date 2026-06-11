@@ -11,6 +11,7 @@ app.use(express.static(path.join(__dirname, '../client')));
 
 const CARD_PAIRS = 8;
 let leaderboard = [];
+let preferences = {};
 
 function shuffle(array) {
   const arr = [...array];
@@ -34,13 +35,13 @@ app.post('/api/score', (req, res) => {
   const { time, playerName } = req.body;
   
   if (typeof time !== 'number' || time <= 0) {
-    return res.status(400).json({ error: '鏃犳晥鐨勬垚缁╂暟鎹? });
+    return res.status(400).json({ error: '无效的成绩数据' });
   }
 
   const entry = {
     id: Date.now(),
     time: time,
-    playerName: playerName || '鍖垮悕鐜╁',
+    playerName: playerName || '匿名玩家',
     date: new Date().toLocaleString('zh-CN')
   };
 
@@ -61,6 +62,48 @@ app.get('/api/leaderboard', (req, res) => {
   res.json({ leaderboard: leaderboard });
 });
 
+app.get('/api/preferences', (req, res) => {
+  const playerId = req.query.playerId || 'default';
+  res.json({
+    preferences: preferences[playerId] || {
+      soundEnabled: true,
+      soundVolume: 0.7,
+      animationIntensity: 2,
+      darkMode: false
+    }
+  });
+});
+
+app.post('/api/preferences', (req, res) => {
+  const { playerId, soundEnabled, soundVolume, animationIntensity, darkMode } = req.body;
+  const pid = playerId || 'default';
+
+  if (typeof soundEnabled !== 'undefined' && typeof soundEnabled !== 'boolean') {
+    return res.status(400).json({ error: '无效的音效设置' });
+  }
+  if (typeof soundVolume !== 'undefined' && (typeof soundVolume !== 'number' || soundVolume < 0 || soundVolume > 1)) {
+    return res.status(400).json({ error: '无效的音量设置' });
+  }
+  if (typeof animationIntensity !== 'undefined' && (!Number.isInteger(animationIntensity) || animationIntensity < 0 || animationIntensity > 3)) {
+    return res.status(400).json({ error: '无效的动画强度设置' });
+  }
+  if (typeof darkMode !== 'undefined' && typeof darkMode !== 'boolean') {
+    return res.status(400).json({ error: '无效的深色模式设置' });
+  }
+
+  preferences[pid] = {
+    soundEnabled: soundEnabled ?? preferences[pid]?.soundEnabled ?? true,
+    soundVolume: soundVolume ?? preferences[pid]?.soundVolume ?? 0.7,
+    animationIntensity: animationIntensity ?? preferences[pid]?.animationIntensity ?? 2,
+    darkMode: darkMode ?? preferences[pid]?.darkMode ?? false
+  };
+
+  res.json({
+    success: true,
+    preferences: preferences[pid]
+  });
+});
+
 app.listen(PORT, () => {
-  console.log(`鏈嶅姟鍣ㄨ繍琛屽湪 http://localhost:${PORT}`);
+  console.log(`服务器运行在 http://localhost:${PORT}`);
 });
