@@ -1,0 +1,8 @@
+{
+  "persist_test": {
+    "soundEnabled": true,
+    "soundVolume": 0.3,
+    "animationIntensity": 3,
+    "darkMode": true
+  }
+}

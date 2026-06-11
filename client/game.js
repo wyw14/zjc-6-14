@@ -43,6 +43,7 @@ let currentPreferences = {
   animationIntensity: 2,
   darkMode: false
 };
+let draftPreferences = { ...currentPreferences };
 let playerId = localStorage.getItem('playerId') || 'player_' + Date.now();
 localStorage.setItem('playerId', playerId);
 
@@ -115,51 +116,69 @@ function playSound(type) {
   }
 }
 
-function applyPreferences(prefs) {
-  currentPreferences = { ...currentPreferences, ...prefs };
-  
-  if (currentPreferences.darkMode) {
+function applyVisualPrefs(prefs) {
+  if (prefs.darkMode) {
     document.body.classList.add('dark-mode');
   } else {
     document.body.classList.remove('dark-mode');
   }
   
   document.body.classList.remove('anim-level-0', 'anim-level-1', 'anim-level-2', 'anim-level-3');
-  document.body.classList.add(`anim-level-${currentPreferences.animationIntensity}`);
-  
-  soundEnabledCheckbox.checked = currentPreferences.soundEnabled;
-  soundVolumeSlider.value = currentPreferences.soundVolume * 100;
-  volumeValueSpan.textContent = `${Math.round(currentPreferences.soundVolume * 100)}%`;
-  darkModeCheckbox.checked = currentPreferences.darkMode;
+  document.body.classList.add(`anim-level-${prefs.animationIntensity}`);
+}
+
+function syncSettingsUI(prefs) {
+  soundEnabledCheckbox.checked = prefs.soundEnabled;
+  soundVolumeSlider.value = prefs.soundVolume * 100;
+  volumeValueSpan.textContent = `${Math.round(prefs.soundVolume * 100)}%`;
+  darkModeCheckbox.checked = prefs.darkMode;
   
   animBtns.forEach(btn => {
     const level = parseInt(btn.dataset.level);
-    btn.classList.toggle('active', level === currentPreferences.animationIntensity);
+    btn.classList.toggle('active', level === prefs.animationIntensity);
   });
 }
 
+function applyPreferences(prefs) {
+  currentPreferences = { ...currentPreferences, ...prefs };
+  draftPreferences = { ...currentPreferences };
+  applyVisualPrefs(currentPreferences);
+}
+
 async function loadPreferences() {
+  let loadedPrefs = null;
   try {
     const response = await fetch(`${API_BASE_URL}/preferences?playerId=${playerId}`);
     const data = await response.json();
-    applyPreferences(data.preferences);
+    loadedPrefs = data.preferences;
   } catch (error) {
     console.error('加载偏好设置失败:', error);
     const saved = localStorage.getItem('preferences');
     if (saved) {
-      applyPreferences(JSON.parse(saved));
+      loadedPrefs = JSON.parse(saved);
     }
+  }
+  if (loadedPrefs) {
+    applyPreferences(loadedPrefs);
+    syncSettingsUI(draftPreferences);
   }
 }
 
-async function savePreferences() {
-  const prefs = {
-    playerId: playerId,
+function readDraftFromUI() {
+  draftPreferences = {
     soundEnabled: soundEnabledCheckbox.checked,
     soundVolume: parseInt(soundVolumeSlider.value) / 100,
-    animationIntensity: currentPreferences.animationIntensity,
+    animationIntensity: draftPreferences.animationIntensity,
     darkMode: darkModeCheckbox.checked
   };
+}
+
+async function savePreferences() {
+  readDraftFromUI();
+  const prefs = { ...draftPreferences, playerId: playerId };
+  
+  let savedPrefs = null;
+  let savedToServer = false;
   
   try {
     const response = await fetch(`${API_BASE_URL}/preferences`, {
@@ -172,28 +191,52 @@ async function savePreferences() {
     
     const data = await response.json();
     if (data.success) {
-      applyPreferences(data.preferences);
-      localStorage.setItem('preferences', JSON.stringify(data.preferences));
-      alert('设置已保存！');
-      playSound('match');
+      savedPrefs = data.preferences;
+      savedToServer = true;
     }
   } catch (error) {
     console.error('保存偏好设置失败:', error);
-    applyPreferences(prefs);
-    localStorage.setItem('preferences', JSON.stringify(prefs));
-    alert('设置已本地保存！');
   }
+  
+  if (!savedPrefs) {
+    savedPrefs = { ...draftPreferences };
+  }
+  
+  applyPreferences(savedPrefs);
+  syncSettingsUI(draftPreferences);
+  localStorage.setItem('preferences', JSON.stringify(savedPrefs));
+  
+  if (savedToServer) {
+    alert('设置已保存到服务器！');
+  } else {
+    alert('服务器连接失败，设置已本地保存！');
+  }
+  playSound('match');
 }
 
 function openSettings() {
   playSound('click');
-  applyPreferences(currentPreferences);
+  draftPreferences = { ...currentPreferences };
+  syncSettingsUI(draftPreferences);
+  applyVisualPrefs(draftPreferences);
   settingsModal.classList.remove('hidden');
 }
 
-function closeSettings() {
+function cancelSettings() {
   playSound('click');
+  applyVisualPrefs(currentPreferences);
+  syncSettingsUI(currentPreferences);
+  draftPreferences = { ...currentPreferences };
   settingsModal.classList.add('hidden');
+}
+
+function closeSettings() {
+  cancelSettings();
+}
+
+function previewDraftChange() {
+  readDraftFromUI();
+  applyVisualPrefs(draftPreferences);
 }
 
 let cards = [];
@@ -461,24 +504,35 @@ settingsBtn.addEventListener('click', openSettings);
 closeSettingsBtn.addEventListener('click', closeSettings);
 saveSettingsBtn.addEventListener('click', savePreferences);
 
+soundEnabledCheckbox.addEventListener('change', () => {
+  playSound('click');
+  previewDraftChange();
+});
+
 soundVolumeSlider.addEventListener('input', (e) => {
   volumeValueSpan.textContent = `${e.target.value}%`;
+  previewDraftChange();
+});
+
+darkModeCheckbox.addEventListener('change', () => {
+  playSound('click');
+  previewDraftChange();
 });
 
 animBtns.forEach(btn => {
   btn.addEventListener('click', () => {
     playSound('click');
     const level = parseInt(btn.dataset.level);
-    currentPreferences.animationIntensity = level;
+    draftPreferences.animationIntensity = level;
     animBtns.forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    applyPreferences({ animationIntensity: level });
+    applyVisualPrefs(draftPreferences);
   });
 });
 
 settingsModal.addEventListener('click', (e) => {
   if (e.target === settingsModal) {
-    closeSettings();
+    cancelSettings();
   }
 });
 

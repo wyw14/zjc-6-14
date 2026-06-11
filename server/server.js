@@ -1,17 +1,48 @@
 ﻿const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const PORT = 6043;
+
+const DATA_DIR = path.join(__dirname, 'data');
+const PREFERENCES_FILE = path.join(DATA_DIR, 'preferences.json');
+const LEADERBOARD_FILE = path.join(DATA_DIR, 'leaderboard.json');
+
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+function loadJSON(filepath, defaultValue) {
+  try {
+    if (fs.existsSync(filepath)) {
+      const content = fs.readFileSync(filepath, 'utf-8');
+      return JSON.parse(content);
+    }
+  } catch (err) {
+    console.error(`读取文件失败 ${filepath}:`, err.message);
+  }
+  return defaultValue;
+}
+
+function saveJSON(filepath, data) {
+  try {
+    fs.writeFileSync(filepath, JSON.stringify(data, null, 2), 'utf-8');
+    return true;
+  } catch (err) {
+    console.error(`写入文件失败 ${filepath}:`, err.message);
+    return false;
+  }
+}
 
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../client')));
 
 const CARD_PAIRS = 8;
-let leaderboard = [];
-let preferences = {};
+let leaderboard = loadJSON(LEADERBOARD_FILE, []);
+let preferences = loadJSON(PREFERENCES_FILE, {});
 
 function shuffle(array) {
   const arr = [...array];
@@ -48,6 +79,7 @@ app.post('/api/score', (req, res) => {
   leaderboard.push(entry);
   leaderboard.sort((a, b) => a.time - b.time);
   leaderboard = leaderboard.slice(0, 10);
+  saveJSON(LEADERBOARD_FILE, leaderboard);
 
   const rank = leaderboard.findIndex(e => e.id === entry.id) + 1;
 
@@ -97,6 +129,8 @@ app.post('/api/preferences', (req, res) => {
     animationIntensity: animationIntensity ?? preferences[pid]?.animationIntensity ?? 2,
     darkMode: darkMode ?? preferences[pid]?.darkMode ?? false
   };
+
+  saveJSON(PREFERENCES_FILE, preferences);
 
   res.json({
     success: true,
